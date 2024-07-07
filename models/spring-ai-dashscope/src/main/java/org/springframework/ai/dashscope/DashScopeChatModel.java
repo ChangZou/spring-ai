@@ -14,7 +14,7 @@ import org.springframework.ai.dashscope.api.DashScopeApi;
 import org.springframework.ai.dashscope.api.DashScopeApi.*;
 import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionMessage.MediaContent;
 import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionMessage.Role;
-import org.springframework.ai.dashscope.metadata.DashScopChatResponseMetadata;
+import org.springframework.ai.dashscope.metadata.DashScopeChatResponseMetadata;
 import org.springframework.ai.model.ModelOptionsUtils;
 import org.springframework.ai.model.function.AbstractFunctionCallSupport;
 import org.springframework.ai.model.function.FunctionCallbackContext;
@@ -24,6 +24,7 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.MimeType;
+import org.springframework.util.ObjectUtils;
 import reactor.core.publisher.Flux;
 
 import java.util.*;
@@ -135,7 +136,7 @@ public class DashScopeChatModel extends
 								.withGenerationMetadata(ChatGenerationMetadata.from(chatCompletion.output().finishReason(), null))
 				);
 			}
-			return new ChatResponse(generations);
+			return new ChatResponse(generations, DashScopeChatResponseMetadata.from(chatCompletion));
 		});
 	}
 
@@ -171,14 +172,13 @@ public class DashScopeChatModel extends
 								var generation = new Generation(choice.message().content(),
 										Map.of("request_id", id, "role", roleMap.getOrDefault(id, ""), "finishReason", finish));
 								if (choice.finishReason() != null) {
-									generation = generation.withGenerationMetadata(
-											ChatGenerationMetadata.from(choice.finishReason().name(), null));
+									generation = generation.withGenerationMetadata(ChatGenerationMetadata.from(choice.finishReason().name(), null));
 								}
 								return generation;
 							}).toList();
 
 							if (chatCompletion.usage() != null) {
-								return new ChatResponse(generations, DashScopChatResponseMetadata.from(chatCompletion));
+								return new ChatResponse(generations, DashScopeChatResponseMetadata.from(chatCompletion));
 							}
 							else {
 								return new ChatResponse(generations);
@@ -204,7 +204,7 @@ public class DashScopeChatModel extends
 				.map(cc -> new Choice(cc.finishReason(), cc.message()))
 				.toList();
 
-		return new ChatCompletion(chunk.requestId(), new Output(null, null, choices), null);
+		return new ChatCompletion(chunk.requestId(), new Output(null, null, choices), chunk.usage());
 	}
 
 	private Map<String, Object> toMap(String requestId, String text, String finishReason) {
@@ -316,7 +316,7 @@ public class DashScopeChatModel extends
 
 	@Override
 	public ChatOptions getDefaultOptions() {
-		return null;
+		return this.defaultOptions;
 	}
 
 	@Override
@@ -326,12 +326,12 @@ public class DashScopeChatModel extends
 
 	@Override
 	protected List<DashScopeApi.ChatCompletionMessage> doGetUserMessages(ChatCompletionRequest request) {
-		return List.of();
+		return request.chatCompletionInput().chatCompletionMessages();
 	}
 
 	@Override
 	protected DashScopeApi.ChatCompletionMessage doGetToolResponseMessage(ResponseEntity<ChatCompletion> response) {
-		return null;
+		return response.getBody().output().choices().iterator().next().message();
 	}
 
 	@Override
@@ -349,6 +349,23 @@ public class DashScopeChatModel extends
 
 	@Override
 	protected boolean isToolFunctionCall(ResponseEntity<ChatCompletion> response) {
-		return false;
+		var body = response.getBody();
+		if (body == null) {
+			return false;
+		}
+
+		var output = body.output();
+		if (ObjectUtils.isEmpty(output)) {
+			return false;
+		}
+
+		var choices = body.output().choices();
+		if (CollectionUtils.isEmpty(choices)) {
+			return false;
+		}
+
+		var choice = choices.get(0);
+		return !CollectionUtils.isEmpty(choice.message().toolCalls())
+				&& choice.finishReason() == DashScopeApi.ChatCompletionFinishReason.TOOL_CALLS;
 	}
 }

@@ -523,7 +523,7 @@ public class DashScopeApi {
 			this.presencePenalty = presencePenalty;
 			this.stop = stop;
 			this.enableSearch = enableSearch;
-			this.incrementalOutput = incrementalOutput != null ? incrementalOutput : Boolean.TRUE;
+			this.incrementalOutput = incrementalOutput != null ? incrementalOutput : Boolean.FALSE;
 			this.tools = tools;
 			this.toolChoice = toolChoice;
 		}

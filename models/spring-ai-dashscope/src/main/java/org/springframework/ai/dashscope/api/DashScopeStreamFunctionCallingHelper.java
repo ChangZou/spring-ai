@@ -12,7 +12,6 @@ import static org.springframework.ai.dashscope.api.DashScopeApi.*;
 
 /**
  * Helper class to support Streaming function calling.
- *
  * It can merge the streamed ChatCompletionChunk in case of function calling message.
  *
  * @author Sober
@@ -21,8 +20,9 @@ public class DashScopeStreamFunctionCallingHelper {
 
 	/**
 	 * Merge the previous and current ChatCompletionChunk into a single one.
+	 *
 	 * @param previous the previous ChatCompletionChunk
-	 * @param current the current ChatCompletionChunk
+	 * @param current  the current ChatCompletionChunk
 	 * @return the merged ChatCompletionChunk
 	 */
 	public ChatCompletionChunk merge(ChatCompletionChunk previous, ChatCompletionChunk current) {
@@ -81,12 +81,10 @@ public class DashScopeStreamFunctionCallingHelper {
 					toolCalls.add(lastPreviousTooCall);
 				}
 				toolCalls.add(currentToolCall);
-			}
-			else {
+			} else {
 				toolCalls.add(merge(lastPreviousTooCall, currentToolCall));
 			}
-		}
-		else {
+		} else {
 			if (lastPreviousTooCall != null) {
 				toolCalls.add(lastPreviousTooCall);
 			}
