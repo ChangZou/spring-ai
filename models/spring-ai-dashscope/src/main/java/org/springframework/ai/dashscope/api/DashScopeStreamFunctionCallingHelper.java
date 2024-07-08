@@ -2,6 +2,7 @@ package org.springframework.ai.dashscope.api;
 
 import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionFunction;
 import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionMessage;
+import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionParameters.ResultFormatEnum;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
@@ -25,7 +26,7 @@ public class DashScopeStreamFunctionCallingHelper {
 	 * @param current  the current ChatCompletionChunk
 	 * @return the merged ChatCompletionChunk
 	 */
-	public ChatCompletionChunk merge(ChatCompletionChunk previous, ChatCompletionChunk current) {
+	public ChatCompletionChunk merge(ChatCompletionChunk previous, ChatCompletionChunk current, ResultFormatEnum resultFormat) {
 
 		if (previous == null) {
 			return current;
@@ -35,8 +36,20 @@ public class DashScopeStreamFunctionCallingHelper {
 		String object = (current.object() != null ? current.object() : previous.object());
 		Usage usage = (current.usage() != null ? current.usage() : previous.usage());
 
-		Choice previousChoice0 = (ObjectUtils.isEmpty(previous.output()) || CollectionUtils.isEmpty(previous.output().choices()) ? null : previous.output().choices().get(0));
-		Choice currentChoice0 = (ObjectUtils.isEmpty(current.output()) || CollectionUtils.isEmpty(current.output().choices()) ? null : current.output().choices().get(0));
+		Choice previousChoice0;
+		Choice currentChoice0;
+
+		if (resultFormat == ResultFormatEnum.MESSAGE) {
+			previousChoice0 = (ObjectUtils.isEmpty(previous.output()) || CollectionUtils.isEmpty(previous.output().choices()) ? null : previous.output().choices().get(0));
+			currentChoice0 = (ObjectUtils.isEmpty(current.output()) || CollectionUtils.isEmpty(current.output().choices()) ? null : current.output().choices().get(0));
+		} else {
+			previousChoice0 = ObjectUtils.isEmpty(previous.output()) || ObjectUtils.isEmpty(previous.output().text()) || ObjectUtils.isEmpty(previous.output().finishReason()) ?
+					null :
+					new Choice(previous.output().finishReason(), new ChatCompletionMessage(previous.output().text()));
+			currentChoice0 = ObjectUtils.isEmpty(current.output()) || ObjectUtils.isEmpty(current.output().text()) || ObjectUtils.isEmpty(current.output().finishReason()) ?
+					null :
+					new Choice(current.output().finishReason(), new ChatCompletionMessage(current.output().text()));
+		}
 
 		Choice choice = merge(previousChoice0, currentChoice0);
 		List<Choice> chunkChoices = choice == null ? List.of() : List.of(choice);
@@ -150,5 +163,4 @@ public class DashScopeStreamFunctionCallingHelper {
 		}
 		return choice.finishReason() == ChatCompletionFinishReason.TOOL_CALLS;
 	}
-
 }

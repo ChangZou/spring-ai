@@ -71,7 +71,6 @@ class DashScopeChatModelIT {
 	 *
 	 * TODO 增量输出需要解决
 	 */
-
 	@Test
 	void roleTest() {
 		UserMessage userMessage = new UserMessage(
@@ -88,11 +87,12 @@ class DashScopeChatModelIT {
 
 	@Test
 	void streamRoleTest() {
+		var promptOptions = DashScopeChatOptions.builder().withResultFormat("text").withIncrementalOutput(Boolean.TRUE).build();
 		UserMessage userMessage = new UserMessage(
 				"Tell me about 3 famous pirates from the Golden Age of Piracy and what they did.");
 		SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemResource);
 		Message systemMessage = systemPromptTemplate.createMessage(Map.of("name", "Bob", "voice", "pirate"));
-		Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
+		Prompt prompt = new Prompt(List.of(userMessage, systemMessage), promptOptions);
 		Flux<ChatResponse> flux = streamingChatModel.stream(prompt);
 
 		List<ChatResponse> responses = flux.collectList().block();
@@ -184,7 +184,8 @@ class DashScopeChatModelIT {
 		Generation generation = chatModel.call(prompt).getResult();
 
 		ActorsFilms actorsFilms = outputConverter.convert(generation.getOutput().getContent());
-		System.out.printf(actorsFilms.toString());
+		assertThat(actorsFilms.getActor()).isEqualTo("Tom Hanks");
+		assertThat(actorsFilms.getMovies()).hasSizeGreaterThan(0);
 	}
 
 	record ActorsFilmsRecord(String actor, List<String> movies) {

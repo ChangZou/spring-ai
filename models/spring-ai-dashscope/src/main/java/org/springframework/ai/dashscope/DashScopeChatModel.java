@@ -14,6 +14,7 @@ import org.springframework.ai.dashscope.api.DashScopeApi;
 import org.springframework.ai.dashscope.api.DashScopeApi.*;
 import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionMessage.MediaContent;
 import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionMessage.Role;
+import org.springframework.ai.dashscope.api.DashScopeApi.ChatCompletionParameters.ResultFormatEnum;
 import org.springframework.ai.dashscope.metadata.DashScopeChatResponseMetadata;
 import org.springframework.ai.model.ModelOptionsUtils;
 import org.springframework.ai.model.function.AbstractFunctionCallSupport;
@@ -125,15 +126,15 @@ public class DashScopeChatModel extends
 			}
 
 			List<Generation> generations;
-			if (request.chatCompletionParameters().resultFormat() != null && request.chatCompletionParameters().resultFormat().equals("message")) {
+			if (request.chatCompletionParameters().resultFormat() != null && request.chatCompletionParameters().resultFormat() == ResultFormatEnum.MESSAGE) {
 				generations = chatCompletion.output().choices().stream()
 						.map(choice -> new Generation(choice.message().content(), toMap(chatCompletion.requestId(), choice))
 								.withGenerationMetadata(ChatGenerationMetadata.from(choice.finishReason().name(), null)))
 						.toList();
 			} else {
 				generations = List.of(
-						new Generation(chatCompletion.output().text(), toMap(chatCompletion.requestId(), chatCompletion.output().text(), chatCompletion.output().finishReason()))
-								.withGenerationMetadata(ChatGenerationMetadata.from(chatCompletion.output().finishReason(), null))
+						new Generation(chatCompletion.output().text(), toMap(chatCompletion.requestId(), chatCompletion.output().text(), chatCompletion.output().finishReason().name()))
+								.withGenerationMetadata(ChatGenerationMetadata.from(chatCompletion.output().finishReason().name(), null))
 				);
 			}
 			return new ChatResponse(generations, DashScopeChatResponseMetadata.from(chatCompletion));

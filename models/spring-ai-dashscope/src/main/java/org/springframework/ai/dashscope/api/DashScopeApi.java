@@ -156,7 +156,7 @@ public class DashScopeApi {
 				.concatMapIterable(window -> {
 					Mono<ChatCompletionChunk> monoChunk = window.reduce(
 							new ChatCompletionChunk(null, null, null, null),
-							(previous, current) -> this.chunkMerger.merge(previous, current));
+							(previous, current) -> this.chunkMerger.merge(previous, current, chatRequest.chatCompletionParameters().resultFormat()));
 					return List.of(monoChunk);
 				})
 				.flatMap(mono -> mono);
@@ -410,6 +410,10 @@ public class DashScopeApi {
 			this(role, content, null, null);
 		}
 
+		public ChatCompletionMessage(Object content) {
+			this(Role.ASSISTANT, content, null, null);
+		}
+
 
 	}
 
@@ -487,7 +491,7 @@ public class DashScopeApi {
 	public record ChatCompletionParameters(
 			@JsonProperty("temperature") Float temperature,
 			@JsonProperty("top_p") Float topP,
-			@JsonProperty("result_format") String resultFormat,
+			@JsonProperty("result_format") ResultFormatEnum resultFormat,
 			@JsonProperty("seed") Integer seed,
 			@JsonProperty("max_tokens") String maxTokens,
 			@JsonProperty("top_k") Integer topK,
@@ -502,7 +506,7 @@ public class DashScopeApi {
 		public ChatCompletionParameters(
 				Float temperature,
 				Float topP,
-				String resultFormat,
+				ResultFormatEnum resultFormat,
 				Integer seed,
 				String maxTokens,
 				Integer topK,
@@ -515,7 +519,7 @@ public class DashScopeApi {
 				String toolChoice) {
 			this.temperature = temperature;
 			this.topP = topP;
-			this.resultFormat = resultFormat != null ? resultFormat : ResultFormatEnum.MESSAGE.getValue();
+			this.resultFormat = resultFormat != null ? resultFormat : ResultFormatEnum.MESSAGE;
 			this.seed = seed;
 			this.maxTokens = maxTokens;
 			this.topK = topK;
@@ -523,24 +527,15 @@ public class DashScopeApi {
 			this.presencePenalty = presencePenalty;
 			this.stop = stop;
 			this.enableSearch = enableSearch;
-			this.incrementalOutput = incrementalOutput != null ? incrementalOutput : Boolean.FALSE;
+			this.incrementalOutput = incrementalOutput;
 			this.tools = tools;
 			this.toolChoice = toolChoice;
 		}
 
 		public enum ResultFormatEnum {
-			TEXT("text"),
-			MESSAGE("message");
+			@JsonProperty("text") TEXT,
+			@JsonProperty("message") MESSAGE;
 
-			private final String value;
-
-			ResultFormatEnum(String value) {
-				this.value = value;
-			}
-
-			public String getValue() {
-				return value;
-			}
 		}
 
 	}
@@ -614,7 +609,7 @@ public class DashScopeApi {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public record Output(
 			@JsonProperty("text") String text,
-			@JsonProperty("finish_reason") String finishReason,
+			@JsonProperty("finish_reason") ChatCompletionFinishReason finishReason,
 			@JsonProperty("choices") List<Choice> choices
 	) {
 
